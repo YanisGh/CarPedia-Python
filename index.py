@@ -10,9 +10,12 @@ import requests
 #     model = entry_model.get()
 #     print(f"Car data submitted: Brand - {brand}, Model - {model}")
 
-def fetch_car_info(brand, model):
+def fetch_single_car_info(brand, model):
     # URL of the API you want to fetch data from
-    url = f"https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/all-vehicles-model/records?limit=1&refine=make%3A\"{brand}\"&refine=model%3A\"{model}\""
+    brand = "Audi"
+    model = "R8"
+
+    url = f"https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/all-vehicles-model/records?refine=make%3A\"{brand}\"&refine=model%3A\"{model}\""
 
     print(url)  
     # Make the API request
@@ -20,15 +23,27 @@ def fetch_car_info(brand, model):
 
     if response.status_code == 200:
         print("Car data retrieved")
-        car_data = response.json()  # Assuming the API returns JSON data
-
-        # Extract 'make' and 'model' from the JSON response under the 'results' key
+        car_data = response.json()
+        # Stuff i need once : Make, Model, vclass
         if 'results' in car_data and car_data['results']:
             make = car_data['results'][0].get('make', 'N/A')
             model = car_data['results'][0].get('model', 'N/A')
+            i = 0
+            while i < len(car_data['results']): 
+                # Stuff i need multiple times : year, cylinders, displacement, transmission, drive (AWD, RWD etc)
+                print(car_data['results'][i].get('year', 'N/A'))
+                print(str(car_data['results'][i].get('cylinders', 'N/A')) + " cylinders")
+                print(str(car_data['results'][i].get('displ', 'N/A')) + "L of displacement")
+                print(str(car_data['results'][i].get('trany', 'N/A')) + " transmission")
+                print(car_data['results'][i].get('drive', 'N/A'))
+                print("")
+                i += 1  
 
+            print(len(car_data['results']))
             print(f"Make: {make}, Model: {model}")
             return make, model
+
+
         else:
             print("Make and model not found in the response")
             return None, None
@@ -47,9 +62,9 @@ def showCarInfo(model, brand):
     carInfo = tk.Tk()
     carInfo.title("Retrieved car data") 
     carInfo.geometry("600x350")
-    label_brand = tk.Label(carInfo, text=f"Brand - {brand}, Model - {model}")
+    label_brand = tk.Label(carInfo, text=(f"Here is the data for the {brand} {model} : "))
     label_brand.pack()
-    fetch_car_info(brand, model)
+    fetch_single_car_info(brand, model)
 
 def retrieve_data_plate():
     #To get rid of the "-" 
