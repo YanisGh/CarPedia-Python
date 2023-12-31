@@ -4,45 +4,86 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 import time
 import requests
+from io import BytesIO
+from PIL import Image, ImageTk
 
 # def submit_data():
 #     brand = entry_brand.get()
 #     model = entry_model.get()
 #     print(f"Car data submitted: Brand - {brand}, Model - {model}")
 
+
+
 def fetch_single_car_info(brand, model):
     # URL of the API you want to fetch data from
     brand = "Audi"
     model = "R8"
 
-    url = f"https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/all-vehicles-model/records?refine=make%3A\"{brand}\"&refine=model%3A\"{model}\""
+    url = f"https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/all-vehicles-model/records?limit=-1&refine=make%3A\"{brand}\"&refine=model%3A\"{model}\""
 
     print(url)  
     # Make the API request
     response = requests.get(url)
 
     if response.status_code == 200:
-        print("Car data retrieved")
         car_data = response.json()
-        # Stuff i need once : Make, Model, vclass
+        carInfo = tk.Tk()
+        carInfo.title("Retrieved Car Data")
+        carInfo.geometry("600x350")
+        # retrieved_image = get_image_from_url("https://i.pinimg.com/736x/10/96/de/1096de000517b30cd2c97ca4744c1f2e.jpg")
+        # if retrieved_image:
+        #     label = tk.Label(windowIndex, image=retrieved_image)
+        #     label.pack()
+        canvas = tk.Canvas(carInfo)
+        canvas.place(relx=0.65, rely=1, anchor='center')
+
+        scrollbar = tk.Scrollbar(carInfo, command=canvas.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        frame = tk.Frame(canvas)
+        canvas.create_window((0, 0), window=frame, anchor='nw')
+
+        frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+
+
         if 'results' in car_data and car_data['results']:
             make = car_data['results'][0].get('make', 'N/A')
             model = car_data['results'][0].get('model', 'N/A')
-            i = 0
-            while i < len(car_data['results']): 
-                # Stuff i need multiple times : year, cylinders, displacement, transmission, drive (AWD, RWD etc)
-                print(car_data['results'][i].get('year', 'N/A'))
-                print(str(car_data['results'][i].get('cylinders', 'N/A')) + " cylinders")
-                print(str(car_data['results'][i].get('displ', 'N/A')) + "L of displacement")
-                print(str(car_data['results'][i].get('trany', 'N/A')) + " transmission")
-                print(car_data['results'][i].get('drive', 'N/A'))
-                print("")
-                i += 1  
+            vclass = car_data['results'][0].get('vclass', 'N/A')
 
-            print(len(car_data['results']))
-            print(f"Make: {make}, Model: {model}")
-            return make, model
+            make_label = tk.Label(frame, text=f"Make: {make}")
+            make_label.pack(anchor='center')
 
+            model_label = tk.Label(frame, text=f"Model: {model}")
+            model_label.pack(anchor='center')
+
+            vclass_label = tk.Label(frame, text=f"Vehicle type: {vclass}")
+            vclass_label.pack(anchor='center')
+
+            for car_info in car_data['results']:
+                year = car_info.get('year', 'N/A')
+                cylinders = car_info.get('cylinders', 'N/A')
+                displacement = car_info.get('displ', 'N/A')
+                transmission = car_info.get('trany', 'N/A')
+                drive = car_info.get('drive', 'N/A')
+
+                info_frame = tk.Frame(frame, relief=tk.GROOVE, borderwidth=2)
+                info_frame.pack(padx=5, pady=5, anchor='center', fill=tk.X)
+
+                year_label = tk.Label(info_frame, text=f"Year: {year}")
+                year_label.pack(anchor='center')
+
+                cylinders_label = tk.Label(info_frame, text=f"{cylinders} cylinders")
+                cylinders_label.pack(anchor='center')
+
+                displacement_label = tk.Label(info_frame, text=f"{displacement}L of displacement")
+                displacement_label.pack(anchor='center')
+
+                transmission_label = tk.Label(info_frame, text=f"{transmission} transmission")
+                transmission_label.pack(anchor='center')
+
+                drive_label = tk.Label(info_frame, text=f"Drive: {drive}")
+                drive_label.pack(anchor='center')
 
         else:
             print("Make and model not found in the response")
@@ -55,15 +96,6 @@ def submit_data():
     brand = entry_brand.get().capitalize()
     model = entry_model.get().capitalize()
     print(f"Car data submitted: Brand - {brand}, Model - {model}")
-    showCarInfo(model, brand)
-
-#Window to show retrieved car data from submit_data
-def showCarInfo(model, brand):
-    carInfo = tk.Tk()
-    carInfo.title("Retrieved car data") 
-    carInfo.geometry("600x350")
-    label_brand = tk.Label(carInfo, text=(f"Here is the data for the {brand} {model} : "))
-    label_brand.pack()
     fetch_single_car_info(brand, model)
 
 def retrieve_data_plate():
