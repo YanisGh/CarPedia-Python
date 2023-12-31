@@ -15,13 +15,14 @@ def get_image_from_url(image_url):
         print("Failed to retrieve the image")
         return None
 
+
 #Car data retrieval and displaying
 #------------------------------
 def fetch_single_car_info():
     #brand/model par defaut pck flm de les inputs a chaque fois dans les entry
     #A supprimer
-    brand = "Audi"
-    model = "R8"
+    brand = "Ford"
+    model = "Mustang"
     # brand = brand_entry.get().capitalize()
     # model = model_entry.get().capitalize()
 
@@ -79,18 +80,18 @@ def fetch_single_car_info():
         notebook_info_drive = tb.Frame(notebook_info)
 
         #fetch needed car details
-    
 
-        years = Label(notebook_info_year, text=f"{sorted_years}",width=50, height=5, wraplength=200)
+
+        years = Label(notebook_info_year, text=f"{sorted_years}",width=30, height=15, wraplength=200)
         years.pack(padx=10, pady=10)
 
-        engines = Label(notebook_info_engine, text=f"{engines_combined}",width=50, height=5, wraplength=200)
+        engines = Label(notebook_info_engine, text=f"{engines_combined}",width=30, height=15, wraplength=200)
         engines.pack(padx=10, pady=10)
 
-        transmission = Label(notebook_info_transmission, text=f"{transmissions_combined}",width=50, height=5, wraplength=200)
+        transmission = Label(notebook_info_transmission, text=f"{transmissions_combined}",width=30, height=15, wraplength=200)
         transmission.pack(padx=10, pady=10)
 
-        drive = Label(notebook_info_drive, text=f"{drives_combined}",width=50, height=5, wraplength=200)
+        drive = Label(notebook_info_drive, text=f"{drives_combined}",width=30, height=15, wraplength=200)
         drive.pack(padx=10, pady=10)
 
         notebook_info.add(notebook_info_year, text="Year")
@@ -99,6 +100,13 @@ def fetch_single_car_info():
         notebook_info.add(notebook_info_drive, text="Drive")
         #------------------------------
         #Car displaying   
+
+        def delete_notebook():
+            notebook_info.destroy()
+            delete_vehicule_button.destroy()
+        delete_vehicule_button = tb.Button(root, text="Delete Notebook", bootstyle="danger", command=delete_notebook)
+        delete_vehicule_button.pack(pady=10)
+    
 #Car data retrieval
 #-------------------------------
 
