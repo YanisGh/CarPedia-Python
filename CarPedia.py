@@ -15,6 +15,7 @@ from selenium.common.exceptions import NoSuchElementException
 #------------------------------
 image_references = {}
 def fetch_single_car_info():
+    
     error_label.config(text="")
     #brand/model par defaut pck flm de les inputs a chaque fois dans les entry
     #A supprimer
@@ -159,6 +160,7 @@ def fetch_single_car_info():
 
 #Car data retrieval and displaying from license search
 #------------------------------
+image_references_plate = {}
 def retrieve_data_plate():
     #To get rid of the "-" 
     #plate_from_entry = license_plate_entry.get().replace("-","")
@@ -187,8 +189,8 @@ def retrieve_data_plate():
         pass  # Element was not found, continue with the rest of the code
         
         #Get car pic
-        car_img = driver.find_element('xpath',"/html/body/div[3]/div[1]/div[5]/div[1]/div[1]/div/p/img").get_attribute("src")
-        print(f"car img : {car_img}")
+        car_img_url = driver.find_element('xpath',"/html/body/div[3]/div[1]/div[5]/div[1]/div[1]/div/p/img").get_attribute("src")
+        #print(f"car img : {car_img_url}")
         # response = requests.get(url)
         # image = Image.open(BytesIO(response.content))
         # car_image = ImageTk.PhotoImage(image)
@@ -196,29 +198,74 @@ def retrieve_data_plate():
         #Type du véhicule  
         car_type = driver.find_element('xpath',"/html/body/div[3]/div[1]/div[5]/div[3]/div[1]/ul/li[1]/span").text
         print(f"car type : {car_type}")
+        car_name = driver.find_element('xpath',"/html/body/div[3]/div[1]/div[3]/div[1]/div/div[1]/h1").text
+        
         #Mecanique
+        car_max_speed = driver.find_element('xpath', '/html/body/div[3]/div[1]/div[5]/div[3]/div[1]/ul/li[6]/span').text
+        car_max_speed_details = (f"Vitesse max : {car_max_speed}")
+
+        car_gearbox_gear = driver.find_element('xpath', '//*[@id="auto_pv_ongOn0TAB"]/div/div/table/tbody/tr[7]/td[2]/span').text
+        car_gearbox_type = driver.find_element('xpath', '/html/body/div[3]/div[1]/div[5]/div[3]/div[1]/ul/li[4]/span').text
+        car_gearbox_details = (f"Boite de vitesses : Boite {car_gearbox_type} à {car_gearbox_gear} rapports")
+
+        car_0to100 = driver.find_element('xpath', '//*[@id="auto_pv_ongOn0TAB"]/div/div/table/tbody/tr[10]/td[2]/span').text
+        car_0to100_details = (f"0-100km/h en {car_0to100}")
         car_engine = driver.find_element('xpath', '//*[@id="auto_pv_ongOn0TAB"]/div/div/table/tbody/tr[2]/td[2]/span').text
         car_displacement = driver.find_element('xpath', '//*[@id="auto_pv_ongOn0TAB"]/div/div/table/tbody/tr[3]/td[2]/span').text
         car_hp = driver.find_element('xpath', '/html/body/div[3]/div[1]/div[5]/div[3]/div[1]/ul/li[3]/span').text
         car_fuel = driver.find_element('xpath', '/html/body/div[3]/div[1]/div[5]/div[3]/div[1]/ul/li[2]/span').text
-        print(f"Moteur {car_fuel} de {car_engine} de {car_displacement} développant {car_hp}")
-
-        car_max_speed = driver.find_element('xpath', '/html/body/div[3]/div[1]/div[5]/div[3]/div[1]/ul/li[6]/span').text
-        print(f"Vitesse max : {car_max_speed}")
-
-        car_gearbox_gear = driver.find_element('xpath', '//*[@id="auto_pv_ongOn0TAB"]/div/div/table/tbody/tr[7]/td[2]/span').text
-        car_gearbox_type = driver.find_element('xpath', '/html/body/div[3]/div[1]/div[5]/div[3]/div[1]/ul/li[4]/span').text
-        print(f"Boite de vitesses : Boite {car_gearbox_type} à {car_gearbox_gear} rapports")
-
-        car_0to100 = driver.find_element('xpath', '//*[@id="auto_pv_ongOn0TAB"]/div/div/table/tbody/tr[10]/td[2]/span').text
-        print(f"0-100km/h : {car_0to100}")
+        car_technical_details = (f"Moteur {car_fuel} de {car_engine} de {car_displacement} développant {car_hp}. \n" 
+                                f"{car_0to100_details} et {car_max_speed_details}. \n"
+                                f"{car_gearbox_details}")
 
         car_period_prod = driver.find_element('xpath', '//*[@id="auto_pv_ongOn0TAB"]/div/div/table/tbody/tr[18]/td[2]/span').text
-        print(f"Periode de production : {car_period_prod}")
+        #print(f"Periode de production : {car_period_prod}")
 
         car_price_new = driver.find_element('xpath', '//*[@id="auto_pv_ongOn0TAB"]/div/div/table/tbody/tr[19]/td[2]/span').text
-        print(f"Prix neuf : {car_price_new}")
+        #print(f"Prix neuf : {car_price_new}")
+        car_misc_details = (f"Periode de production : {car_period_prod}. \n" 
+                            f"Prix neuf : {car_price_new}")
         driver.quit()
+
+        car_name_label = tb.Label(text=f"{car_name}", bootstyle="light")
+        car_name_label.pack(pady=10)
+
+        response = requests.get(car_img_url)
+        img_data = response.content
+        # Open the image using Pillow
+        image = Image.open(BytesIO(img_data))
+
+        # Convert the image to Tkinter PhotoImage
+        tk_image = ImageTk.PhotoImage(image)
+        image_references_plate["img"] = tk_image
+        # Create a label and display the image
+        label_img = tb.Label(root, image=tk_image)
+        label_img.pack()
+
+        notebook_info = tb.Notebook(root, bootstyle="dark")
+        notebook_info.pack()
+
+        notebook_info_technique = tb.Frame(notebook_info)
+        notebook_info_misc = tb.Frame(notebook_info)
+
+        #fetch needed car details
+
+        detail = Label(notebook_info_technique, text=f"{car_technical_details}",width=30, height=15, wraplength=200)
+        detail.pack(padx=10, pady=10)
+        detail = Label(notebook_info_misc, text=f"{car_misc_details}",width=30, height=15, wraplength=200)
+        detail.pack(padx=10, pady=10)
+
+        notebook_info.add(notebook_info_technique, text="Details techniques du véhicule")
+        notebook_info.add(notebook_info_misc, text="Details généraux du véhicule")
+
+        def delete_vehicule():
+            car_name_label.destroy()
+            label_img.destroy()
+            notebook_info.destroy()
+            delete_vehicule_button.destroy()
+            
+        delete_vehicule_button = tb.Button(root, text="Delete Vehicle", bootstyle="danger", command=delete_vehicule)
+        delete_vehicule_button.pack(pady=10)
 #------------------------------ 
 #Car data retrieval and displaying from license search
     
