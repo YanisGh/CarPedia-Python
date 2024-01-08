@@ -15,24 +15,23 @@ from selenium.common.exceptions import NoSuchElementException
 #------------------------------
 image_references = {}
 def fetch_single_car_info():
-    
-    error_label.config(text="")
-    #brand/model par defaut pck flm de les inputs a chaque fois dans les entry
-    #A supprimer
-    # brand = "Ford"
-    # model = "Mustang"
-    # year = ""
+
+    car_name = ""
+    search_status_label.config(text="")
+    search_status_label.config(text="Searching for vehicle", bootstyle ="info")
+
     year_provided = False
-    brand_search = brand_entry.get().capitalize()
-    model_search = model_entry.get().capitalize()
+    brand_search = brand_entry.get().replace(" ", "").capitalize()
+    model_search = model_entry.get().replace(" ", "").capitalize()
     year_search = year_entry.get()
 
     if year_search.isdigit():
         year_provided = True
     
     if not brand_search.strip() or not model_search.strip():
-        error_label.config(text="Please enter a vehicle")
+       search_status_label.config(text="Please enter a vehicle", bootstyle ="danger")
     else:
+        
         # image = Image.open("r8test.jpg")
         # image_tk = ImageTk.PhotoImage(image)
         # image_references["img"] = image_tk  # Store image reference
@@ -50,6 +49,8 @@ def fetch_single_car_info():
                 make = car_data['results'][0].get('make', 'N/A')
                 model = car_data['results'][0].get('model', 'N/A')
                 vclass = car_data['results'][0].get('vclass', 'N/A')
+                car_name = f"{make} {model} \n{vclass}"
+
                 years = []
                 engines = []
                 transmissions = []
@@ -85,6 +86,9 @@ def fetch_single_car_info():
                 # Create a label and display the image
                 label_img = tb.Label(root, image=tk_image)
                 label_img.pack()
+                car_label = tb.Label(root, text=f"{car_name}")
+                car_label.pack(pady=10)
+                
                 #------------------------------
                 #Car image displaying
                 for car_info in car_data['results']:
@@ -144,19 +148,22 @@ def fetch_single_car_info():
                 notebook_info.add(notebook_info_engine, text="Engine")
                 notebook_info.add(notebook_info_transmission, text="Transmission")
                 notebook_info.add(notebook_info_drive, text="Drive")
+                search_status_label.config(text="Vehicle found successfully !", bootstyle ="success")
                 #------------------------------
                 #Car displaying   
 
                 def delete_vehicule():
+                    car_label.destroy()
                     label_img.destroy()
                     notebook_info.destroy()
                     delete_vehicule_button.destroy()
+                    search_status_label.config(text="")
                 delete_vehicule_button = tb.Button(root, text="Delete Vehicle", bootstyle="danger", command=delete_vehicule)
                 delete_vehicule_button.pack(pady=10)   
         #Car data retrieval and displaying from entry search
         #-------------------------------
             else:
-                error_label.config(text="No vehicle has been found in the database")
+                search_status_label.config(text="No vehicle has been found in the API", bootstyle="danger")
 
 #Car data retrieval and displaying from license search
 #------------------------------
@@ -164,7 +171,10 @@ image_references_plate = {}
 def retrieve_data_plate():
     #To get rid of the "-" 
     #plate_from_entry = license_plate_entry.get().replace("-","")
-    plate_from_entry = "ED427BH"
+    #Car sans finition ok
+    #car Erreur ok
+    #Car avec finition pas bon
+    plate_from_entry = "ED427BH" #ED427BH #AN684FH #DT405RH #AG963SR
     print(f"Car data submitted: Plate - {plate_from_entry}")
     driver = webdriver.Chrome()   
     url = "https://www.paruvendu.fr/fiches-techniques-auto/"
@@ -177,18 +187,42 @@ def retrieve_data_plate():
     license_field = driver.find_element('xpath','//*[@id="immatriculation"]')
     license_field.send_keys(plate_from_entry)
     #click on submit button
+    time.sleep(1)
     submit_license_btn = driver.find_element('xpath','//*[@id="btnValidImmat"]')
     submit_license_btn.click()
     time.sleep(1)
     try:
-        error_element = driver.find_element('xpath', '//*[@id="pap_err_cuImmat"]')
+        error_element = driver.find_element('xpath', '//*[@id="pap_err_cuImmat"]').text
+        # If there is an error
         if error_element:
-            error_license_label.config(text="No license plates found")
-            time.sleep(20)
+            print(f"error element detected: {error_element}")
+            search_status_license_label.config(text=f"ERREUR : {error_element}", bootstyle ="danger")
+            if error_element == "":
+                print("No license found + error element empty")
+                time.sleep(20)
+        else:
+            #for some reason when i delete the line below and just leave the print, 
+            #it just stops there when trying a car with trim options, it doesn't even enter the fucking else statement 
+            car_img = driver.find_element('xpath', "/html/body/div[3]/div[1]/div[5]/div[1]/div[1]/div/p/img").get_attribute("src")
+            print(f"car img : {car_img}")
+
     except NoSuchElementException:
-        pass  # Element was not found, continue with the rest of the code
+        # If the element was not found, continue with the rest of the code
         
-        #Get car pic
+        # response = requests.get(url)
+        # image = Image.open(BytesIO(response.content))
+        # car_image = ImageTk.PhotoImage(image)
+
+        #Type du véhicule  
+        try:
+            submit_finition = driver.find_element('xpath','/html/body/div[3]/div[1]/div[3]/div[2]/div[1]/form/div/input')
+            # Execute JavaScript to click the button 
+            if submit_finition: 
+                driver.execute_script("arguments[0].click();", submit_finition)
+                print("bouton finition appuyer")
+        except NoSuchElementException:
+                #Get car pic
+                print("pas de bouton")
         car_img_url = driver.find_element('xpath',"/html/body/div[3]/div[1]/div[5]/div[1]/div[1]/div/p/img").get_attribute("src")
         #print(f"car img : {car_img_url}")
         # response = requests.get(url)
@@ -197,7 +231,6 @@ def retrieve_data_plate():
         
         #Type du véhicule  
         car_type = driver.find_element('xpath',"/html/body/div[3]/div[1]/div[5]/div[3]/div[1]/ul/li[1]/span").text
-        print(f"car type : {car_type}")
         car_name = driver.find_element('xpath',"/html/body/div[3]/div[1]/div[3]/div[1]/div/div[1]/h1").text
         
         #Mecanique
@@ -225,7 +258,7 @@ def retrieve_data_plate():
         #print(f"Prix neuf : {car_price_new}")
         car_misc_details = (f"Periode de production : {car_period_prod}. \n" 
                             f"Prix neuf : {car_price_new}")
-        driver.quit()
+        
 
         car_name_label = tb.Label(text=f"{car_name}", bootstyle="light")
         car_name_label.pack(pady=10)
@@ -254,11 +287,13 @@ def retrieve_data_plate():
         detail.pack(padx=10, pady=10)
         detail = Label(notebook_info_misc, text=f"{car_misc_details}",width=30, height=15, wraplength=200)
         detail.pack(padx=10, pady=10)
+        search_status_license_label.config(text="Vehicule trouvée !", bootstyle="success")
 
         notebook_info.add(notebook_info_technique, text="Details techniques du véhicule")
         notebook_info.add(notebook_info_misc, text="Details généraux du véhicule")
 
         def delete_vehicule():
+            search_status_license_label.config(text="")
             car_name_label.destroy()
             label_img.destroy()
             notebook_info.destroy()
@@ -266,6 +301,8 @@ def retrieve_data_plate():
             
         delete_vehicule_button = tb.Button(root, text="Delete Vehicle", bootstyle="danger", command=delete_vehicule)
         delete_vehicule_button.pack(pady=10)
+        driver.quit()
+        print("Finished")
 #------------------------------ 
 #Car data retrieval and displaying from license search
     
@@ -297,8 +334,8 @@ year_entry = tb.Entry(root, bootstyle="primary",
 year_entry.insert(0, '(Optional)')
 year_entry.pack()
 
-error_label = tb.Label(text="", bootstyle="danger")
-error_label.pack(pady=5)
+search_status_label = tb.Label(text="", bootstyle="danger")
+search_status_label.pack(pady=5)
 
 submit_entries_button = tb.Button(text="Search for your vehicle", bootstyle="primary", command=fetch_single_car_info)
 submit_entries_button.pack(pady=20)
@@ -308,10 +345,13 @@ license_plate_entry_label.pack(pady=10)
 license_plate_entry = tb.Entry(root, bootstyle="primary",
                             width=30)
 license_plate_entry.pack()
+
 license_plate_entry_button = tb.Button(text="Search for your vehicle using a license plate", bootstyle="primary", command=retrieve_data_plate)
 license_plate_entry_button.pack(pady=20)
-error_license_label = tb.Label(text="", bootstyle="danger")
-error_label.pack(pady=5)
+
+search_status_license_label = tb.Label(text="", bootstyle="danger")
+search_status_license_label.pack()
+
 #------------------------------
 #Car data submission
 
