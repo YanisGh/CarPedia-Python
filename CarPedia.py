@@ -1,5 +1,7 @@
 from tkinter import *
 import ttkbootstrap as tb
+from ttkbootstrap.scrolled import ScrolledFrame
+from tkinter import filedialog
 import requests
 import time
 import base64
@@ -9,13 +11,20 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import NoSuchElementException
+import cv2
+from matplotlib import pyplot as plt
+import numpy as np
+import imutils
+import easyocr
+from PIL import Image
+import os
+
 
 
 #Car data retrieval and displaying from entry search
 #------------------------------
-image_references = {}
+image_references = {}  
 def fetch_single_car_info():
-
     car_name = ""
     search_status_label.config(text="")
     search_status_label.config(text="Searching for vehicle", bootstyle ="info")
@@ -84,9 +93,9 @@ def fetch_single_car_info():
                 tk_image = ImageTk.PhotoImage(image)
                 image_references["img"] = tk_image
                 # Create a label and display the image
-                label_img = tb.Label(root, image=tk_image)
+                label_img = tb.Label(result_frame, image=tk_image)
                 label_img.pack()
-                car_label = tb.Label(root, text=f"{car_name}")
+                car_label = tb.Label(result_frame, text=f"{car_name}")
                 car_label.pack(pady=10)
                 
                 #------------------------------
@@ -122,7 +131,8 @@ def fetch_single_car_info():
 
                 #Car displaying
                 #------------------------------
-                notebook_info = tb.Notebook(root, bootstyle="dark")
+                
+                notebook_info = tb.Notebook(result_frame, bootstyle="dark")
                 notebook_info.pack()
 
                 notebook_info_year = tb.Frame(notebook_info)
@@ -158,24 +168,79 @@ def fetch_single_car_info():
                     notebook_info.destroy()
                     delete_vehicule_button.destroy()
                     search_status_label.config(text="")
-                delete_vehicule_button = tb.Button(root, text="Delete Vehicle", bootstyle="danger", command=delete_vehicule)
+                delete_vehicule_button = tb.Button(result_frame, text="Delete Vehicle", bootstyle="danger", command=delete_vehicule)
                 delete_vehicule_button.pack(pady=10)   
-        #Car data retrieval and displaying from entry search
-        #-------------------------------
+
             else:
                 search_status_label.config(text="No vehicle has been found in the API", bootstyle="danger")
+#------------------------------
+#Car data retrieval and displaying from entry search
+
+
+#License plate caracters to extract
+#-------------------------------
+def get_image_plate():
+    filename = filedialog.askopenfilename()
+    if filename:
+        reader = easyocr.Reader(['en'])
+        img = cv2.imread(f'{filename}')
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        plt.imshow(cv2.cvtColor(gray, cv2.COLOR_BGR2RGB))
+        #("gray",gray)
+        # cv2.waitKey(0)
+        bfilter = cv2.bilateralFilter(gray, 11, 17, 17) #Noise reduction
+        edged = cv2.Canny(bfilter, 50, 250) #Edge detection
+        plt.imshow(cv2.cvtColor(edged, cv2.COLOR_BGR2RGB))
+        #("edged",edged)
+        # print(reader.readtext(edged))
+        # cv2.waitKey(0)
+        keypoints = cv2.findContours(edged.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours = imutils.grab_contours(keypoints)
+        contours = sorted(contours, key=cv2.contourArea, reverse=True)[:10]
+        location = None
+        for contour in contours:
+            approx = cv2.approxPolyDP(contour, 10, True)
+            if len(approx) == 4:
+                location = approx
+                break
+        print(location)
+        mask = np.zeros(gray.shape, np.uint8)
+        new_image = cv2.drawContours(mask, [location], 0,255, -1)
+        new_image = cv2.bitwise_and(img, img, mask=mask)
+        plt.imshow(cv2.cvtColor(new_image, cv2.COLOR_BGR2RGB))
+        #("new img",new_image)
+        # cv2.waitKey(0)
+        (x,y) = np.where(mask==255)
+        (x1, y1) = (np.min(x), np.min(y))
+        (x2, y2) = (np.max(x), np.max(y))
+        cropped_image = gray[x1:x2+1, y1:y2+1]
+        plt.imshow(cv2.cvtColor(cropped_image, cv2.COLOR_BGR2RGB))
+        #("cropped",cropped_image)
+        # cv2.waitKey(0)
+        #reader = easyocr.Reader(['en'])
+        result = reader.readtext(cropped_image)[0][1]
+        print(result)
+        retrieve_data_plate(result)
+    else:
+        search_status_license_label.config(text="Error getting the image", bootstyle = "danger")
+        #return result 
+#-------------------------------
+#License plate caracters to extract
+
 
 #Car data retrieval and displaying from license search
 #------------------------------
 image_references_plate = {}
-def retrieve_data_plate():
+def retrieve_data_plate(license_plate=None):
     #To get rid of the "-" 
-    #plate_from_entry = license_plate_entry.get().replace("-","")
-    #Car sans finition ok
-    #car Erreur ok
-    #Car avec finition pas bon
-    plate_from_entry = "ED427BH" #ED427BH #AN684FH #DT405RH #AG963SR
-    print(f"Car data submitted: Plate - {plate_from_entry}")
+    #if we took the license plate from the entry
+    if license_plate is None:
+        license_plate = license_plate_entry.get()
+    #plate_from_entry = "ED427BH" #ED427BH #AN684FH #DT405RH #AG963SR
+    symbols_to_replace = [' ', '-', ';', ',', '.', ':', '!', '*']
+    for symbol in symbols_to_replace:
+        license_plate = license_plate.replace(symbol, "")
+    print(f"Car data submitted: Plate - {license_plate}")
     driver = webdriver.Chrome()   
     url = "https://www.paruvendu.fr/fiches-techniques-auto/"
     driver.get(url)
@@ -185,7 +250,7 @@ def retrieve_data_plate():
         accept_cookies_btn.click()
     #fill out plate number in field
     license_field = driver.find_element('xpath','//*[@id="immatriculation"]')
-    license_field.send_keys(plate_from_entry)
+    license_field.send_keys(license_plate)
     #click on submit button
     time.sleep(1)
     submit_license_btn = driver.find_element('xpath','//*[@id="btnValidImmat"]')
@@ -260,7 +325,7 @@ def retrieve_data_plate():
                             f"Prix neuf : {car_price_new}")
         
 
-        car_name_label = tb.Label(text=f"{car_name}", bootstyle="light")
+        car_name_label = tb.Label(result_frame, text=f"{car_name}", bootstyle="light")
         car_name_label.pack(pady=10)
 
         response = requests.get(car_img_url)
@@ -272,10 +337,10 @@ def retrieve_data_plate():
         tk_image = ImageTk.PhotoImage(image)
         image_references_plate["img"] = tk_image
         # Create a label and display the image
-        label_img = tb.Label(root, image=tk_image)
-        label_img.pack()
+        label_img = tb.Label(result_frame, image=tk_image)
+        label_img.pack(pady= 10)
 
-        notebook_info = tb.Notebook(root, bootstyle="dark")
+        notebook_info = tb.Notebook(result_frame, bootstyle="dark")
         notebook_info.pack()
 
         notebook_info_technique = tb.Frame(notebook_info)
@@ -299,13 +364,12 @@ def retrieve_data_plate():
             notebook_info.destroy()
             delete_vehicule_button.destroy()
             
-        delete_vehicule_button = tb.Button(root, text="Delete Vehicle", bootstyle="danger", command=delete_vehicule)
+        delete_vehicule_button = tb.Button(result_frame, text="Delete Vehicle", bootstyle="danger", command=delete_vehicule)
         delete_vehicule_button.pack(pady=10)
         driver.quit()
         print("Finished")
 #------------------------------ 
 #Car data retrieval and displaying from license search
-    
 
 #darkly/cyborg
 root = tb.Window(themename="darkly")
@@ -349,8 +413,18 @@ license_plate_entry.pack()
 license_plate_entry_button = tb.Button(text="Search for your vehicle using a license plate", bootstyle="primary", command=retrieve_data_plate)
 license_plate_entry_button.pack(pady=20)
 
+license_plate_photo_button = tb.Button(text="Or use a photo", bootstyle="secondary", command=get_image_plate)
+license_plate_photo_button.pack()
+
 search_status_license_label = tb.Label(text="", bootstyle="danger")
 search_status_license_label.pack()
+
+separator = tb.Separator(root, bootstyle="light")
+separator.pack(fill="x", padx=400)
+
+result_frame = ScrolledFrame(root, autohide=False)
+result_frame.pack(fill=BOTH, expand=YES)
+
 
 #------------------------------
 #Car data submission

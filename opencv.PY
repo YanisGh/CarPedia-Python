@@ -9,7 +9,7 @@ import os
 print(cv2. __version__)
 reader = easyocr.Reader(['en'])
 
-img = cv2.imread('image14.jpg')
+img = cv2.imread('image12.jpg')
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 plt.imshow(cv2.cvtColor(gray, cv2.COLOR_BGR2RGB))
 #("gray",gray)
